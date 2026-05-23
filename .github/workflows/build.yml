@@ -34,13 +34,15 @@ jobs:
         run: |
           SHA=$(git -C ./gakumasu-diff rev-parse HEAD)
           echo "sha=$SHA" >> $GITHUB_OUTPUT
+          echo "tag=data-$SHA" >> $GITHUB_OUTPUT
           LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "none")
-          if [ "$SHA" = "$LAST_TAG" ]; then
+          LAST_SHA="${LAST_TAG#data-}"
+          if [ "$SHA" = "$LAST_SHA" ]; then
             echo "changed=false" >> $GITHUB_OUTPUT
             echo "No update needed (SHA: $SHA)"
           else
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Update needed: $LAST_TAG -> $SHA"
+            echo "Update needed: $LAST_TAG -> data-$SHA"
           fi
 
       - name: Build game.db
@@ -86,7 +88,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "${{ steps.check.outputs.sha }}" \
+          gh release create "${{ steps.check.outputs.tag }}" \
             --title "Game Data ${{ steps.check.outputs.sha }}" \
             --notes "gakumasu-diff commit: ${{ steps.check.outputs.sha }}" \
             ./release/manifest.json \
