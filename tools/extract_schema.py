@@ -285,18 +285,22 @@ def process_file_worker(yaml_file: str) -> tuple[Optional[str], Optional[str], s
                     skip_next = True
         content = "\n".join(fixed_lines)
     
-    data = yaml.load(content, Loader=SafeLoader)
-    
+    try:
+        data = yaml.load(content, Loader=SafeLoader)
+    except Exception as e:
+        print(f"警告：跳过无法解析的文件 {os.path.basename(yaml_file)}: {e}")
+        return None, None, yaml_file, None
+
     table_name = os.path.splitext(os.path.basename(yaml_file))[0]
-    
+
     schema, sql = process_yaml_data(data, table_name)
-    
+
     if not schema:
         return None, None, yaml_file, data
-        
+
     class_name = table_name
     python_model = generate_python_models(schema, class_name)
-    
+
     return python_model, sql, yaml_file, data
 
 
