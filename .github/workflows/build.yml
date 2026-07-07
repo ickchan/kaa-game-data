@@ -4,6 +4,12 @@ on:
   schedule:
     - cron: '0 */6 * * *'
   workflow_dispatch:
+    inputs:
+      force:
+        description: 'Force full build even if no updates detected'
+        type: boolean
+        required: false
+        default: false
 
 jobs:
   build:
@@ -31,18 +37,24 @@ jobs:
         id: check
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORCE: ${{ inputs.force || 'false' }}
         run: |
           SHA=$(git -C ./gakumasu-diff rev-parse HEAD)
           echo "sha=$SHA" >> $GITHUB_OUTPUT
           echo "tag=data-$SHA" >> $GITHUB_OUTPUT
-          LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "none")
-          LAST_SHA="${LAST_TAG#data-}"
-          if [ "$SHA" = "$LAST_SHA" ]; then
-            echo "changed=false" >> $GITHUB_OUTPUT
-            echo "No update needed (SHA: $SHA)"
-          else
+          if [ "$FORCE" = "true" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Update needed: $LAST_TAG -> data-$SHA"
+            echo "Force update enabled, building regardless"
+          else
+            LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "none")
+            LAST_SHA="${LAST_TAG#data-}"
+            if [ "$SHA" = "$LAST_SHA" ]; then
+              echo "changed=false" >> $GITHUB_OUTPUT
+              echo "No update needed (SHA: $SHA)"
+            else
+              echo "changed=true" >> $GITHUB_OUTPUT
+              echo "Update needed: $LAST_TAG -> data-$SHA"
+            fi
           fi
 
       - name: Build game.db
