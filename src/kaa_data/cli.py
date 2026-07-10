@@ -29,21 +29,24 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force", action="store_true", help="Force rebuild / release")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
+    optional = argparse.ArgumentParser(add_help=False)
+    optional.add_argument("--force", action="store_true", help="Force rebuild / release")
+
     sub = parser.add_subparsers(dest="command", required=True)
 
     sub.add_parser("vendor-sync", help="Initialize submodules and apply vendor patches")
 
-    build_p = sub.add_parser("build", help="Run full pipeline")
+    build_p = sub.add_parser("build", parents=[optional], help="Run full pipeline")
     build_p.add_argument("--backend", choices=["gom", "campus"], default=None)
 
     sub.add_parser("schema", help="Build game.db from gakumasu-diff")
     sub.add_parser("tasks", help="Build tasks.json from game.db")
 
-    sprites_p = sub.add_parser("sprites", help="Download and extract sprites")
+    sprites_p = sub.add_parser("sprites", parents=[optional], help="Download and extract sprites")
     sprites_p.add_argument("--backend", choices=["gom", "campus"], required=True)
 
     sub.add_parser("package", help="Compress and archive release artifacts")
-    sub.add_parser("release", help="Publish GitHub release")
+    sub.add_parser("release", parents=[optional], help="Publish GitHub release")
     sub.add_parser("diff-backends", help="Compare gom vs campus sprite outputs")
 
     args = parser.parse_args(argv)
