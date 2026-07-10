@@ -10,6 +10,14 @@ on:
         type: boolean
         required: false
         default: false
+      backend:
+        description: 'Asset download backend'
+        type: choice
+        required: false
+        default: gom
+        options:
+          - gom
+          - campus
 
 jobs:
   build:
@@ -19,19 +27,21 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: recursive
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      - name: Install dependencies
-        run: pip install -r requirements.txt
-
-      - name: Clone GkmasObjectManager
-        run: git clone --depth 1 https://github.com/AllenHeartcore/GkmasObjectManager.git ./GkmasObjectManager
-
       - name: Clone gakumasu-diff
         run: git clone --depth 1 https://github.com/vertesan/gakumasu-diff ./gakumasu-diff
+
+      - name: Install package
+        run: pip install -e .
+
+      - name: Vendor sync
+        run: kaa-data vendor-sync
 
       - name: Check if update needed
         id: check
@@ -44,68 +54,26 @@ jobs:
           echo "tag=data-$SHA" >> $GITHUB_OUTPUT
           if [ "$FORCE" = "true" ]; then
             echo "changed=true" >> $GITHUB_OUTPUT
-            echo "Force update enabled, building regardless"
           else
             LAST_TAG=$(gh release list --limit 1 --json tagName -q '.[0].tagName' 2>/dev/null || echo "none")
             LAST_SHA="${LAST_TAG#data-}"
             if [ "$SHA" = "$LAST_SHA" ]; then
               echo "changed=false" >> $GITHUB_OUTPUT
-              echo "No update needed (SHA: $SHA)"
             else
               echo "changed=true" >> $GITHUB_OUTPUT
-              echo "Update needed: $LAST_TAG -> data-$SHA"
             fi
           fi
 
-      - name: Build game.db
+      - name: Build
         if: steps.check.outputs.changed == 'true'
+        env:
+          BACKEND: ${{ inputs.backend || 'gom' }}
+          FORCE: ${{ inputs.force || 'false' }}
         run: |
-          mkdir -p ./output
-          python tools/extract_schema.py -i ./gakumasu-diff -d ./output/game.db
-
-      - name: Download sprites
-        if: steps.check.outputs.changed == 'true'
-        run: |
-          python tools/extract_resources.py \
-            --database ./output/game.db \
-            --output-dir ./output/sprites
-
-      - name: Compress and package
-        if: steps.check.outputs.changed == 'true'
-        run: |
-          mkdir -p ./release
-          python -c "
-          import zstandard
-          cctx = zstandard.ZstdCompressor(level=19)
-          with open('./output/game.db', 'rb') as f_in, open('./release/game.db.zst', 'wb') as f_out:
-              cctx.copy_stream(f_in, f_out)
-          print('game.db compressed')
-          "
-          cd ./output/sprites
-          zip -r ../../release/idol_cards.zip idol_cards/
-          zip -r ../../release/skill_cards.zip skill_cards/
-          zip -r ../../release/drinks.zip drinks/
-
-      - name: Build manifest.json
-        if: steps.check.outputs.changed == 'true'
-        run: |
-          python tools/build_manifest.py \
-            --sha ${{ steps.check.outputs.sha }} \
-            --sprites-dir ./output/sprites \
-            --db ./output/game.db \
-            --output ./release/manifest.json
+          ARGS=(build --backend "$BACKEND")
+          if [ "$FORCE" = "true" ]; then ARGS+=(--force); fi
+          kaa-data "${ARGS[@]}"
 
       - name: Publish Release
         if: steps.check.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          python tools/build_release_notes.py "${{ steps.check.outputs.sha }}"
-          gh release create "${{ steps.check.outputs.tag }}" \
-            --title "Game Data ${{ steps.check.outputs.sha }}" \
-            --notes-file release_notes.md \
-            ./release/manifest.json \
-            ./release/game.db.zst \
-            ./release/idol_cards.zip \
-            ./release/skill_cards.zip \
-            ./release/drinks.zip
+        run: kaa-data release

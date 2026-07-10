@@ -1,0 +1,24 @@
+[data]
+gakumasu_diff = "gakumasu-diff"
+
+[output]
+dir = "output"
+sprites = "output/sprites"
+release = "output/release"
+game_db = "output/game.db"
+tasks = "output/tasks.json"
+build_report = "output/build-report.json"
+
+[build]
+default_backend = "gom"
+zstd_level = 19
+
+[backends.campus]
+root = "campus"
+binary = "campus/campus"
+cache = "campus/cache"
+assets = "campus/cache/assets"
+
+[backends.gom]
+root = "GkmasObjectManager"
+request_timeout = 100

@@ -1,3 +1,9 @@
+mcps
+
+# Independently cloned data source (not a submodule)
+gakumasu-diff/
+
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]

@@ -354,34 +354,24 @@ def find_composite_key(data: List[dict]) -> List[str]:
                 
     return []
 
-def main():
-    import argparse
+def build_schema(input_dir: str | os.PathLike, database: str | os.PathLike, *, limit: int | None = None) -> None:
     import concurrent.futures
-    
-    start_time = time.time()
-    
-    # 设置命令行参数
-    parser = argparse.ArgumentParser(description='从YAML文件提取schema并生成Python类和SQLite数据库')
-    parser.add_argument('-i', '--input', required=True, help='输入YAML文件夹路径')
-    parser.add_argument('-p', '--python', help='输出Python模型文件路径')
-    parser.add_argument('-d', '--database', help='输出SQLite数据库文件路径')
-    parser.add_argument('-l', '--limit', type=int, help='限制处理的文件个数')
-    
-    args = parser.parse_args()
-    
-    if not os.path.isdir(args.input):
-        print(f"错误：'{args.input}' 不是一个有效的目录")
-        sys.exit(1)
-    
-    yaml_files = glob.glob(os.path.join(args.input, "*.yaml"))
-    yaml_files.extend(glob.glob(os.path.join(args.input, "*.yml")))
-    
-    if not yaml_files:
-        print(f"警告：在 '{args.input}' 目录下没有找到YAML文件")
-        sys.exit(0)
 
-    if args.limit and args.limit > 0:
-        yaml_files = yaml_files[:args.limit]
+    start_time = time.time()
+    input_dir = os.fspath(input_dir)
+    database = os.fspath(database)
+
+    if not os.path.isdir(input_dir):
+        raise FileNotFoundError(f"'{input_dir}' is not a valid directory")
+
+    yaml_files = glob.glob(os.path.join(input_dir, "*.yaml"))
+    yaml_files.extend(glob.glob(os.path.join(input_dir, "*.yml")))
+
+    if not yaml_files:
+        raise FileNotFoundError(f"No YAML files found in '{input_dir}'")
+
+    if limit and limit > 0:
+        yaml_files = yaml_files[:limit]
     
     print(f"找到 {len(yaml_files)} 个YAML文件\n")
     
@@ -433,47 +423,23 @@ def main():
                 except StopIteration:
                     pass
 
-    if args.python:
-        with open(args.python, 'w', encoding='utf-8') as f:
-            f.write('####### AUTO GENERATED. DO NOT EDIT. #######\n')
-            f.write('from dataclasses import dataclass\n')
-            f.write('from typing import Optional, List, Any\n\n')
-            f.write('\n\n'.join(all_python_models))
-        print(f"\n成功生成Python模型文件：{args.python}")
-    
-    # 创建SQLite数据库和SQL文件
-    if args.database:
-        # 生成SQL文件
-        # sql_file_path = os.path.splitext(args.database)[0] + '.sql'
-        # with open(sql_file_path, 'w', encoding='utf-8') as f:
-        #     for sql in all_sql_statements:
-        #         if sql.strip():
-        #             f.write(sql + ';\n\n')
-        # print(f"成功生成SQL文件：{sql_file_path}")
-        
-        # 创建数据库
-        create_sqlite_database(all_sql_statements, args.database)
-        
-        # 在创建数据库后添加以下代码
-        print("\n开始插入数据...")
-        with sqlite3.connect(args.database) as conn:
-            with Progress(*progress_columns, transient=True) as progress:
-                task = progress.add_task("插入数据中...", total=len(yaml_data))
-                for yaml_file in yaml_data.keys():
-                    table_name = os.path.splitext(os.path.basename(yaml_file))[0]
-                    data = yaml_data[yaml_file]
-                    if isinstance(data, list) and data:
-                        try:
-                            insert_data_to_sqlite(conn, table_name, data)
-                        except Exception as e:
-                            print(f"\n警告：插入数据到表 {table_name} 时出错：{str(e)}")
-                    progress.update(task, advance=1)
-        print("\n数据插入完成！")
-        
+    create_sqlite_database(all_sql_statements, database)
+
+    print("\n开始插入数据...")
+    with sqlite3.connect(database) as conn:
+        with Progress(*progress_columns, transient=True) as progress:
+            task = progress.add_task("插入数据中...", total=len(yaml_data))
+            for yaml_file in yaml_data.keys():
+                table_name = os.path.splitext(os.path.basename(yaml_file))[0]
+                data = yaml_data[yaml_file]
+                if isinstance(data, list) and data:
+                    try:
+                        insert_data_to_sqlite(conn, table_name, data)
+                    except Exception as e:
+                        print(f"\n警告：插入数据到表 {table_name} 时出错：{str(e)}")
+                progress.update(task, advance=1)
+    print("\n数据插入完成！")
+
     end_time = time.time()
-    print(f"\n总耗时: {end_time - start_time:.2f} 秒") 
-        
-if __name__ == '__main__':
-        
-    main()
+    print(f"\n总耗时: {end_time - start_time:.2f} 秒")
         

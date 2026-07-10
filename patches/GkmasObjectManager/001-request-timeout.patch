@@ -1,0 +1,13 @@
+diff --git a/GkmasObjectManager/utils.py b/GkmasObjectManager/utils.py
+index b3c3b80df..c1d438f52 100644
+--- a/GkmasObjectManager/utils.py
++++ b/GkmasObjectManager/utils.py
+@@ -13,7 +13,7 @@ import requests
+ from cryptography.hazmat.primitives import hashes
+ 
+ UNITY_SUFFIX = ".unity3d"
+-REQUEST_TIMEOUT = 10
++REQUEST_TIMEOUT = 100
+ PathArgtype = str | Path
+ # putting these in const.py causes circular imports
+ 

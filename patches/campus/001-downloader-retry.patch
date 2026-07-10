@@ -1,0 +1,13 @@
+diff --git a/network/hyper/downloader/downloader.go b/network/hyper/downloader/downloader.go
+index 61c0375..54d0b9a 100644
+--- a/network/hyper/downloader/downloader.go
++++ b/network/hyper/downloader/downloader.go
+@@ -44,7 +44,7 @@ func NewDownloader(timeout int, header *http.Header, saveDir string, maxThread i
+     Counter:        &SafeCounter{},
+     SaveDir:        saveDir,
+     MaxConcurrency: maxThread,
+-    MaxSingleRetry: 3,
++    MaxSingleRetry: 10,
+     Entries:        nil,
+   }
+   return d
