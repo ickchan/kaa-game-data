@@ -1,6 +1,7 @@
 import sqlite3
 from pathlib import Path
 
+from kaa_data.models import TaskManifest
 from kaa_data.tasks.builder import build_tasks
 
 
@@ -22,3 +23,7 @@ def test_build_tasks_from_minimal_db(tmp_path: Path):
     manifest = build_tasks(db_path, sprites_dir)
     assert len(manifest.tasks) == 2
     assert manifest.tasks[0].asset_name.endswith("-thumb-portrait")
+
+    payload = manifest.to_json()
+    restored = TaskManifest.from_json(payload)
+    assert restored.tasks[0].output_path == manifest.tasks[0].output_path

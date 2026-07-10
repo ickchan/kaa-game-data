@@ -1,0 +1,12 @@
+diff --git a/requirements.txt b/requirements.txt
+index 1111111..2222222 100644
+--- a/requirements.txt
++++ b/requirements.txt
+@@ -12,5 +12,5 @@ pandas
+ 
+ # Object/Media plugins for
+ # .unity3d, image, audio
+-UnityPy<=1.10.18
++UnityPy>=1.25.2
+ pillow
+ pydub

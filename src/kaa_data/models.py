@@ -12,10 +12,15 @@ class AssetTask:
     post_process: str | None = None
     expected_size: tuple[int, int] | None = None
 
-    def to_json(self) -> dict:
+    def to_json(self, sprites_dir: Path | None = None) -> dict:
+        rel_path = (
+            self.output_path.relative_to(sprites_dir).as_posix()
+            if sprites_dir is not None
+            else self.output_path.as_posix()
+        )
         data: dict = {
             "assetName": self.asset_name,
-            "relPath": self.output_path.as_posix(),
+            "relPath": rel_path,
             "refId": self.ref_id,
         }
         if self.post_process:
@@ -56,7 +61,7 @@ class TaskManifest:
     def to_json(self) -> dict:
         return {
             "spritesDir": self.sprites_dir.as_posix(),
-            "tasks": [t.to_json() for t in self.tasks],
+            "tasks": [t.to_json(self.sprites_dir) for t in self.tasks],
             "skipped": [s.to_json() for s in self.skipped],
             "warnings": self.warnings,
         }
